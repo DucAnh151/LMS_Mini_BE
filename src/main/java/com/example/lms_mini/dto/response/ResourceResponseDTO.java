@@ -15,6 +15,7 @@ public class ResourceResponseDTO {
 
     Long id;
     String url;
+    String fileName;
     Boolean isPrimary;
     Status status;
     ObjectType objectType;

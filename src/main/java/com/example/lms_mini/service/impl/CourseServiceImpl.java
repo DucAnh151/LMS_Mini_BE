@@ -19,9 +19,11 @@ import com.example.lms_mini.exception.ResourceNotFoundException;
 import com.example.lms_mini.mapper.CourseMapper;
 import com.example.lms_mini.mapper.ResourceMapper;
 import com.example.lms_mini.repository.CourseRepository;
+import com.example.lms_mini.repository.EnrollmentRepository;
 import com.example.lms_mini.repository.ResourceRepository;
 import com.example.lms_mini.service.CourseService;
 import com.example.lms_mini.service.FileStorageService;
+import com.example.lms_mini.service.ResourceService;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.springframework.data.domain.Page;
@@ -31,7 +33,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -44,14 +45,16 @@ public class CourseServiceImpl implements CourseService {
     private final ResourceRepository resourceRepository;
     private final CourseMapper courseMapper;
     private final ResourceMapper resourceMapper;
-    private final FileStorageService fileStorageService;
+    private final EnrollmentRepository enrollmentRepository;
+    private final ResourceService resourceService;
 
-    public CourseServiceImpl(CourseRepository courseRepository, ResourceRepository resourceRepository, CourseMapper courseMapper, ResourceMapper resourceMapper, FileStorageService fileStorageService) {
+    public CourseServiceImpl(CourseRepository courseRepository, ResourceRepository resourceRepository, CourseMapper courseMapper, ResourceMapper resourceMapper, FileStorageService fileStorageService, EnrollmentRepository enrollmentRepository, ResourceService resourceService) {
         this.courseRepository = courseRepository;
         this.resourceRepository = resourceRepository;
         this.courseMapper = courseMapper;
         this.resourceMapper = resourceMapper;
-        this.fileStorageService = fileStorageService;
+        this.enrollmentRepository = enrollmentRepository;
+        this.resourceService = resourceService;
     }
 
     @Override
@@ -69,14 +72,12 @@ public class CourseServiceImpl implements CourseService {
             throw new InvalidDataException("course.thumbnail.required");
         }
 
-        // 3. Map & Save Course (Lưu Cha trước để lấy ID)
+        // 3. Map & Save Course
         Course course = courseMapper.toEntity(request);
-        course.setStatus(Status.ACTIVE); // Mặc định Active
         course = courseRepository.save(course);
 
         // 4. Lưu Thumbnails (List)
-        // Logic: File đầu tiên (index 0) sẽ là PRIMARY
-        saveResourceList(thumbnails, course.getId(), true);
+        resourceService.saveResourceList(course.getId(), ObjectType.COURSE, ResourceType.THUMBNAIL, thumbnails, true);
     }
 
     @Override
@@ -91,7 +92,7 @@ public class CourseServiceImpl implements CourseService {
                 .orElseThrow(() -> new ResourceNotFoundException("course.notfound"));
 
         if (request.getCode() != null && !request.getCode().equals(existingCourse.getCode())) {
-            courseRepository.findByCodeAndStatusAndIdNot(request.getCode(), Status.ACTIVE, id)
+            courseRepository.findByCodeAndIdNot(request.getCode(), id)
                     .ifPresent(c -> { throw new ResourceAlreadyExistsException("course.code.exists"); });
         }
 
@@ -105,38 +106,7 @@ public class CourseServiceImpl implements CourseService {
         }
 
         // 3. Xử lý Thumbnails
-        boolean hasNewFiles = (thumbnails != null && !thumbnails.isEmpty());
-        boolean hasChosenOld = (chosenPrimaryThumbnailId != null);
-
-        // Nếu có thay đổi thumbnail, chuyển tất cả isPrimary về false trước
-        if (hasNewFiles || hasChosenOld) {
-            resourceRepository.removeAllPrimaryResources(id, ObjectType.COURSE, ResourceType.THUMBNAIL);
-        }
-
-        // CASE A: Có chọn ảnh cũ làm Primary
-        if (hasChosenOld) {
-            // 1. Set ảnh cũ làm Primary
-            Resource oldRes = resourceRepository.findById(chosenPrimaryThumbnailId)
-                    .orElseThrow(() -> new ResourceNotFoundException("resource.notfound"));
-
-            // Ảnh này phải thuộc về Course này
-            if (!oldRes.getObjectId().equals(id)) {
-                throw new InvalidDataException("resource.invalid");
-            }
-
-            oldRes.setIsPrimary(true);
-            resourceRepository.save(oldRes);
-
-            // 2. Nếu có ảnh mới, lưu để làm gallery
-            if (hasNewFiles) {
-                saveResourceList(thumbnails, id, false);
-            }
-        }
-
-        // CASE B: Không chọn ảnh cũ, thêm ảnh mới
-        else if (hasNewFiles) {
-            saveResourceList(thumbnails, id, true); // true -> chọn ảnh mới đầu tiên làm Primary
-        }
+        resourceService.handleResourceUpdate(id, ResourceType.THUMBNAIL, ObjectType.COURSE, thumbnails, chosenPrimaryThumbnailId);
 
         // 4. Return Response
         CourseBasicResponseDTO response = courseMapper.toBasicResponseDTO(savedCourse);
@@ -144,18 +114,37 @@ public class CourseServiceImpl implements CourseService {
         // Lấy lại URL của thumbnail hiện tại để trả về cho FE
         resourceRepository.findByObjectIdAndObjectTypeAndResourceTypeAndIsPrimaryTrue(id, ObjectType.COURSE, ResourceType.THUMBNAIL)
                 .ifPresent(r -> {
-                    String fullUrl = FullUrlHelper.getFullUrl(r.getUrl());
-                    response.setThumbnailUrl(fullUrl); });
+                    response.setThumbnailUrl(r.getUrl()); });
 
         return response;
     }
 
     @Override
+    @Transactional
     public void softDeleteCourse(Long id) {
-        Course course = courseRepository.findByIdAndStatus(id, Status.ACTIVE)
-                .orElseThrow(() -> new ResourceNotFoundException("course.notfound"));
-        course.setStatus(Status.DELETE);
-        courseRepository.save(course);
+        boolean exists = courseRepository.existsById(id);
+        if (!exists) {
+            throw new ResourceNotFoundException("course.notfound");
+        }
+
+        // Kiểm tra nếu có học viên đang học khóa học này thì không được xóa
+        boolean hasStudents = enrollmentRepository.existsByCourseIdAndStatus(id, Status.ACTIVE);
+        if (hasStudents) {
+            throw new InvalidDataException("course.cannot_delete.has_students");
+        }
+        courseRepository.updateStatus(id, Status.DELETE);
+    }
+
+    @Override
+    @Transactional
+    public long restoreCourse(Long id) {
+        // Kiểm tra tồn tại khóa học
+        boolean exists = courseRepository.existsById(id);
+        if (!exists) {
+            throw new ResourceNotFoundException("course.notfound");
+        }
+        courseRepository.updateStatus(id, Status.ACTIVE);
+        return id;
     }
 
     @Override
@@ -163,21 +152,9 @@ public class CourseServiceImpl implements CourseService {
 
         String searchKeyword = EscapeHelper.escapeLike(keyword);
 
-        Page<CourseBasicResponseDTO> page = courseRepository.searchCourses(searchKeyword, level, minPrice, maxPrice, Status.ACTIVE, pageable);
-
-        if(!page.isEmpty()) {
-            page.getContent().forEach(course -> {
-                if (course.getThumbnailUrl() != null) {
-                    String fullUrl = FullUrlHelper.getFullUrl(course.getThumbnailUrl());
-                    course.setThumbnailUrl(fullUrl);
-                }
-            });
-            return page;
-        }
-        return page;
+        return courseRepository.searchCourses(searchKeyword, level, minPrice, maxPrice, Status.ACTIVE, pageable);
     }
 
-    // 5. LẤY CHI TIẾT (Kèm Gallery)
     @Override
     @Transactional(readOnly = true)
     public CourseDetailsDTO getCourseDetail(Long id) {
@@ -192,11 +169,7 @@ public class CourseServiceImpl implements CourseService {
 
         // Xử lý full URL cho từng resource
         resourceDTOs.forEach(res -> {
-            String fullUrl = ServletUriComponentsBuilder.fromCurrentContextPath()
-                    .path("/api/v1/files/")
-                    .path(res.getUrl())
-                    .toUriString();
-            res.setUrl(fullUrl);
+            res.setUrl(FullUrlHelper.getFullUrl(res.getUrl()));
         });
 
         response.setResources(resourceDTOs);
@@ -204,7 +177,7 @@ public class CourseServiceImpl implements CourseService {
     }
 
     @Override
-    @Transactional(readOnly = true) // Quan trọng để tối ưu query
+    @Transactional(readOnly = true)
     public StreamingResponseBody exportCourses(String keyword, CourseLevel level, BigDecimal minPrice, BigDecimal maxPrice) {
 
         return outputStream -> {
@@ -269,21 +242,4 @@ public class CourseServiceImpl implements CourseService {
         };
     }
 
-    private void saveResourceList(List<MultipartFile> files, Long courseId, boolean autoPickFirstAsPrimary) {
-        for (int i = 0; i < files.size(); i++) {
-            MultipartFile file = files.get(i);
-            String filename = fileStorageService.storeFile(file);
-
-            Resource resource = new Resource();
-            resource.setObjectId(courseId);
-            resource.setObjectType(ObjectType.COURSE);
-            resource.setResourceType(ResourceType.THUMBNAIL);
-            resource.setUrl(filename);
-
-            // Logic chọn Primary cho file mới
-            resource.setIsPrimary(autoPickFirstAsPrimary && i == 0);
-
-            resourceRepository.save(resource);
-        }
-    }
 }

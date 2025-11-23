@@ -12,12 +12,10 @@ public interface StudentMapper {
 
     Student toEntity(StudentRequestDTO studentRequestDTO);
 
-    @Mapping(target = "avatarUrl", source = "avatarUrl")
-    StudentBasicResponseDTO toBasicResponseDTO(Student student, String avatarUrl);
+    StudentBasicResponseDTO toBasicResponseDTO(Student student);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     Student updateEntityFromDto(StudentUpdateDTO dto, @MappingTarget Student entity);
 
-    @Mapping(target = "avatarUrl", source = "avatarUrl")
-    StudentDetailsDTO toDetailsDTO(Student student, String avatarUrl);
+    StudentDetailsDTO toDetailsDTO(Student student);
 }

@@ -24,8 +24,8 @@ public abstract class BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
 
-    @Column(name = "status", length = 1)
-    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "status", length = 20)
+    @Enumerated(EnumType.STRING)
     Status status = Status.ACTIVE;
 
     @CreatedDate

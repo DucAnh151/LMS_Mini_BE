@@ -66,10 +66,11 @@ public class EnrollmentServiceImpl implements EnrollmentService {
             // Cập nhật enrollment với course mới
             enrollment.setCourse(newCourse);
 
-            return enrollmentMapper.toBasicDTO(enrollmentRepository.save(enrollment));
         } else {
             throw new ResourceAlreadyExistsException("enrollment.already_in_course");
         }
+
+        return enrollmentMapper.toBasicDTO(enrollment);
     }
 
     @Transactional(rollbackFor = Throwable.class)
@@ -127,26 +128,24 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
     @Transactional(rollbackFor = Throwable.class)
     @Override
-    public void softDeleteRegistration(Long id) {
+    public void deleteRegistration(Long id) {
         // Kiểm tra enrollment tồn tại
         Enrollment enrollment = enrollmentRepository.findByIdAndStatus(id, Status.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("enrollment.notfound"));
 
-        // Soft delete enrollment
-        enrollment.setStatus(Status.DELETE);
-        enrollmentRepository.save(enrollment);
+        enrollmentRepository.delete(enrollment);
     }
 
     @Transactional(rollbackFor = Throwable.class)
     @Override
-    public void softDeleteByIds(List<Long> ids) {
+    public void deleteByIds(List<Long> ids) {
         // Kiểm tra enrollment tồn tại
         List<Enrollment> enrollments = enrollmentRepository.findAllByIdInAndStatus(ids, Status.ACTIVE);
         if (enrollments.size() != ids.size()) {
             throw new ResourceNotFoundException("enrollment.notfound");
         }
 
-        enrollmentRepository.softDeleteByIds(ids, Status.DELETE);
+        enrollmentRepository.deleteAll(enrollments);
     }
 
 }

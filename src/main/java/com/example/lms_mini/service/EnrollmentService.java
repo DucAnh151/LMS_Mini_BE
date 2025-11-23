@@ -16,11 +16,11 @@ public interface EnrollmentService {
 
     List<CourseBasicResponseDTO> registerCourses(EnrollmentRequestDTO dto);
 
-    void softDeleteRegistration(Long id);
+    void deleteRegistration(Long id);
 
     Page<StudentEnrollmentDTO> getStudentsByCourseId(Long courseId, String keyword, Status status, Pageable pageable);
 
     // Bulk soft delete
-    void softDeleteByIds(List<Long> ids);
+    void deleteByIds(List<Long> ids);
 
 }
