@@ -20,6 +20,8 @@ public class StudentSearchResDTO {
 
     Long id;
 
+    String avatarUrl;
+
     String fullName;
 
     String email;
@@ -34,4 +36,6 @@ public class StudentSearchResDTO {
     String address;
 
     Status status;
+
+    
 }
