@@ -85,3 +85,16 @@ public class LessonController {
                 .build();
     }
 }
+
+
+    @PatchMapping("/lessons/{id}/restore")
+    public DataResponse<Long> restoreLesson(
+            @Min(value = 1) @PathVariable Long id,
+            Locale locale) {
+        Long restoredId = lessonService.restoreLesson(id);
+        return DataResponse.<Long>builder()
+                .status(HttpStatus.OK.value())
+                .message(messageSource.getMessage("lesson.restore.success", null, locale))
+                .data(restoredId)
+                .build();
+    }

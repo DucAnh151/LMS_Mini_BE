@@ -39,7 +39,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @Service
-public class CourseServiceImpl implements CourseService {
+public class    CourseServiceImpl implements CourseService {
 
     private final CourseRepository courseRepository;
     private final ResourceRepository resourceRepository;

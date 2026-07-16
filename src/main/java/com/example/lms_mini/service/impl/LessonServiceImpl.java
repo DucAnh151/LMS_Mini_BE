@@ -48,6 +48,14 @@ public class LessonServiceImpl implements LessonService {
 
     @Override
     @Transactional(rollbackFor = Throwable.class)
+    public Long restoreLesson(Long id) {
+        Lesson lesson = lessonRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("lesson.notfound"));
+        lesson.setStatus(Status.ACTIVE);
+        lessonRepository.save(lesson);
+        return lesson.getId();
+    }
+
     public void createLesson(Long courseId,
                              LessonRequestDTO request,
                              List<MultipartFile> videos,
