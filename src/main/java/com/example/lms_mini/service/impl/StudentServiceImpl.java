@@ -70,10 +70,26 @@ public class StudentServiceImpl implements StudentService {
     }
 
     @Override
-    public Page<StudentSearchResDTO> searchStudents(String keyword, Status status, Pageable pageable) {
+    public Page<StudentSearchResDTO> searchStudents(String keyword,
+                                                    Status status,
+                                                    Pageable pageable) {
+
+        System.out.println("========== SEARCH STUDENTS ==========");
 
         String searchKeyword = EscapeHelper.escapeLike(keyword);
-        return studentRepository.searchStudents(searchKeyword, status, pageable);
+
+        Page<StudentSearchResDTO> page =
+                studentRepository.searchStudents(searchKeyword, status, pageable);
+
+        page.forEach(item -> {
+            if (item.getAvatarUrl() != null && !item.getAvatarUrl().isBlank()) {
+                item.setAvatarUrl(
+                        FullUrlHelper.getFullUrl(item.getAvatarUrl())
+                );
+            }
+        });
+
+        return page;
     }
 
     @Override
@@ -115,7 +131,11 @@ public class StudentServiceImpl implements StudentService {
         }
 
         StudentBasicResponseDTO dto = studentMapper.toBasicResponseDTO(student);
-        dto.setAvatarUrl(savedAvatarUrl);
+
+        dto.setAvatarUrl(
+                FullUrlHelper.getFullUrl(savedAvatarUrl)
+        );
+
         return dto;
 
     }
@@ -173,7 +193,9 @@ public class StudentServiceImpl implements StudentService {
             }
         }
         StudentBasicResponseDTO dto = studentMapper.toBasicResponseDTO(existingStudent);
-        dto.setAvatarUrl(updatedAvatarUrl);
+        dto.setAvatarUrl(
+                FullUrlHelper.getFullUrl(updatedAvatarUrl)
+        );
         return dto;
     }
 

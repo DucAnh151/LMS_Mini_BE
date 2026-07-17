@@ -56,6 +56,8 @@ public class LessonServiceImpl implements LessonService {
         return lesson.getId();
     }
 
+    @Override
+    @Transactional(rollbackFor = Throwable.class)
     public void createLesson(Long courseId,
                              LessonRequestDTO request,
                              List<MultipartFile> videos,

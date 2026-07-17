@@ -38,7 +38,7 @@ public class Lesson extends BaseEntity {
     // Relationships
 
     // Relationship with Course
-    @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_id")
     Course course;
 }
