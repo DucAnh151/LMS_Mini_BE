@@ -69,7 +69,7 @@ public class CourseController {
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public DataResponse<?> updateCourse(@Min(value = 1) @PathVariable Long id,
                                         @Valid @ModelAttribute CourseUpdateDTO request,
-                                        @RequestParam(value = "thumbnails") List<MultipartFile> thumbnails,
+                                        @RequestParam(value = "thumbnails", required = false) List<MultipartFile> thumbnails,
                                         @RequestParam(value = "chosenPrimaryThumbnailId", required = false) Long chosenPrimaryThumbnailId,
                                         @RequestParam(value = "deletedThumbnailIds", required = false) List<Long> deletedThumbnailIds,
                                         Locale locale) {

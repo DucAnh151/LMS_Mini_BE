@@ -16,32 +16,28 @@ import java.util.Optional;
 @Repository
 public interface ResourceRepository extends JpaRepository<Resource, Long> {
 
-    List<Resource> findByObjectIdAndObjectType(Long objectId, ObjectType objectType);
+    List<Resource> findByObjectIdAndObjectTypeAndStatus(Long objectId, ObjectType objectType, Status status);
 
     Optional<Resource> findByObjectIdAndObjectTypeAndIsPrimaryTrue(Long objectId, ObjectType objectType);
 
     Optional<Resource> findByObjectIdAndObjectTypeAndResourceTypeAndIsPrimaryTrue(Long objectId, ObjectType objectType, ResourceType resourceType);
 
-    @Query("SELECT r FROM Resource r " +
-            "WHERE r.objectId = :courseId " +
-            "AND r.objectType = 'COURSE' " +
-            "AND r.resourceType = 'THUMBNAIL' " +
-            "AND r.isPrimary = true")
-    Optional<Resource> findByCourseIdWithPrimaryThumbnail(@Param("objectId") Long courseId);
-
     @Modifying
     @Query("UPDATE Resource r SET r.isPrimary = false " +
-            "WHERE r.objectId = :courseId " +
-            "AND r.objectType = 'COURSE' " +
-            "AND r.resourceType = 'THUMBNAIL'")
-    void removeAllPrimaryThumbnails(@Param("courseId") Long courseId);
+            "WHERE r.objectId = :objectId " +
+            "AND r.objectType = :objectType " +
+            "AND r.resourceType = :resourceType")
+    void removeAllPrimaryResources(@Param("objectId") Long objectId,
+                                   @Param("objectType") ObjectType objectType,
+                                   @Param("resourceType") ResourceType type);
 
     @Modifying
     @Query("UPDATE Resource r SET r.status = :status, r.isPrimary = false " +
             "WHERE r.id IN :ids " +
-            "AND r.objectId = :courseId " +
-            "AND r.objectType = 'COURSE'")
+            "AND r.objectId = :objectId " +
+            "AND r.objectType = :objectType")
     void softDeleteResources(@Param("ids") List<Long> ids,
-                             @Param("courseId") Long courseId,
+                             @Param("objectId") Long objectId,
+                             @Param("objectType") ObjectType objectType,
                              @Param("status") Status status);
 }

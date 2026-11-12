@@ -25,7 +25,7 @@ public interface CourseRepository extends JpaRepository<Course,Long> {
 
     @Query("SELECT new com.example.lms_mini.dto.response.course.CourseBasicResponseDTO(" +
             "c.id, c.name, c.code, c.price, c.level, c.instructorName, c.status, " +
-            "(SELECT r.url FROM Resource r WHERE r.objectId = c.id AND r.objectType = 'COURSE' AND r.resourceType = 'THUMBNAIL' AND r.isPrimary = true)) " +
+            "(SELECT r.url FROM Resource r WHERE r.objectId = c.id AND r.objectType = 'COURSE' AND r.resourceType = 'THUMBNAIL' AND r.isPrimary = true AND r.status = :status)) " +
             "FROM Course c " +
             "WHERE 1=1 " +
             "AND (:keyword IS NULL OR (c.name LIKE %:keyword% ESCAPE '\\' OR c.instructorName LIKE %:keyword% ESCAPE '\\')) " +
@@ -37,6 +37,7 @@ public interface CourseRepository extends JpaRepository<Course,Long> {
             @Param("level") CourseLevel level,
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
+            @Param("status") Status status,
             Pageable pageable
     );
 }

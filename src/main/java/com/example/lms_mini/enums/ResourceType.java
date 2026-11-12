@@ -9,4 +9,6 @@ public enum ResourceType {
     AVATAR,
     @JsonProperty("THUMBNAIL")
     THUMBNAIL,
+    @JsonProperty("DOCUMENT")
+    DOCUMENT
 }

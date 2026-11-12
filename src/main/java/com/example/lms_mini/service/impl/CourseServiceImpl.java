@@ -87,7 +87,7 @@ public class CourseServiceImpl implements CourseService {
                                                Long chosenPrimaryThumbnailId,
                                                List<Long> deletedThumbnailIds) {
         // 1. Tìm Course & Validate Code
-        Course existingCourse = courseRepository.findByIdAndStatus(id, Status.ACTIVE)
+        Course existingCourse = courseRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("course.notfound"));
 
         if (request.getCode() != null && !request.getCode().equals(existingCourse.getCode())) {
@@ -101,7 +101,7 @@ public class CourseServiceImpl implements CourseService {
 
         // Xóa mềm các ảnh đã chọn
         if (deletedThumbnailIds != null && !deletedThumbnailIds.isEmpty()) {
-            resourceRepository.softDeleteResources(deletedThumbnailIds, id, Status.DELETE);
+            resourceRepository.softDeleteResources(deletedThumbnailIds, id, ObjectType.COURSE, Status.DELETE);
         }
 
         // 3. Xử lý Thumbnails
@@ -110,7 +110,7 @@ public class CourseServiceImpl implements CourseService {
 
         // Nếu có thay đổi thumbnail, chuyển tất cả isPrimary về false trước
         if (hasNewFiles || hasChosenOld) {
-            resourceRepository.removeAllPrimaryThumbnails(id);
+            resourceRepository.removeAllPrimaryResources(id, ObjectType.COURSE, ResourceType.THUMBNAIL);
         }
 
         // CASE A: Có chọn ảnh cũ làm Primary
@@ -163,7 +163,7 @@ public class CourseServiceImpl implements CourseService {
 
         String searchKeyword = EscapeHelper.escapeLike(keyword);
 
-        Page<CourseBasicResponseDTO> page = courseRepository.searchCourses(searchKeyword, level, minPrice, maxPrice, pageable);
+        Page<CourseBasicResponseDTO> page = courseRepository.searchCourses(searchKeyword, level, minPrice, maxPrice, Status.ACTIVE, pageable);
 
         if(!page.isEmpty()) {
             page.getContent().forEach(course -> {
@@ -181,13 +181,13 @@ public class CourseServiceImpl implements CourseService {
     @Override
     @Transactional(readOnly = true)
     public CourseDetailsDTO getCourseDetail(Long id) {
-        Course course = courseRepository.findByIdAndStatus(id, Status.ACTIVE)
+        Course course = courseRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("course.notfound"));
 
         CourseDetailsDTO response = courseMapper.toDetailResponseDTO(course);
 
-        // Lấy danh sách Resources (Thumbnail, Video...)
-        List<Resource> resources = resourceRepository.findByObjectIdAndObjectType(id, ObjectType.COURSE);
+        // Lấy danh sách Resources
+        List<Resource> resources = resourceRepository.findByObjectIdAndObjectTypeAndStatus(id, ObjectType.COURSE, Status.ACTIVE);
         List<ResourceResponseDTO> resourceDTOs = resourceMapper.toResponseDTOList(resources);
 
         // Xử lý full URL cho từng resource
@@ -232,7 +232,7 @@ public class CourseServiceImpl implements CourseService {
                 while (true) {
                     Pageable pageable = PageRequest.of(page, BATCH_SIZE);
 
-                    Page<CourseBasicResponseDTO> coursePage = courseRepository.searchCourses(keyword, level, minPrice, maxPrice, pageable);
+                    Page<CourseBasicResponseDTO> coursePage = courseRepository.searchCourses(keyword, level, minPrice, maxPrice, Status.ACTIVE, pageable);
 
                     List<CourseBasicResponseDTO> courses = coursePage.getContent();
 
@@ -285,9 +285,5 @@ public class CourseServiceImpl implements CourseService {
 
             resourceRepository.save(resource);
         }
-    }
-    private String prepareSearchKeyword(String keyword) {
-        if (keyword == null || keyword.trim().isEmpty()) return null;
-        return "%" + EscapeHelper.escapeLike(keyword.trim()) + "%";
     }
 }
