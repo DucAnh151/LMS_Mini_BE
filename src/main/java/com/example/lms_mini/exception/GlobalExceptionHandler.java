@@ -1,10 +1,13 @@
 package com.example.lms_mini.exception;
 
-import com.example.lms_mini.dto.ErrorResponse;
+import com.example.lms_mini.dto.response.ErrorResponse;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import jakarta.validation.ConstraintViolationException;
 import org.hibernate.query.SemanticException;
 import org.springframework.context.MessageSource;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -59,16 +62,34 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handleMethodArgumentNotValid(MethodArgumentNotValidException ex, WebRequest request, Locale locale) {
-
+    public ErrorResponse handleMethodArgumentNotValid(
+            MethodArgumentNotValidException ex,
+            WebRequest request,
+            Locale locale
+    ) {
         Map<String, String> errors = new HashMap<>();
+
         ex.getBindingResult().getFieldErrors().forEach(error -> {
-            String defaultMsg = error.getDefaultMessage() != null ? error.getDefaultMessage() : "";
-            String message = messageSource.getMessage(defaultMsg, null, defaultMsg, locale);
+            String message;
+
+            if (error.isBindingFailure() || "typeMismatch".equals(error.getCode())) {
+                if (error.getField().contains("Date")) {
+                    message = messageSource.getMessage("error.date.format", null, "Invalid date format", locale);
+                }
+                else if (error.getField().contains("gender") || error.getField().contains("status")) {
+                    message = messageSource.getMessage("error.enum.invalid", null, "Invalid enum value", locale);
+                }
+                else {
+                    message = messageSource.getMessage("common.param.type_mismatch", new Object[]{error.getField(), error.getRejectedValue()}, "Invalid type", locale);
+                }
+            } else {
+                String defaultMsg = error.getDefaultMessage() != null ? error.getDefaultMessage() : "";
+                message = messageSource.getMessage(defaultMsg, null, defaultMsg, locale);
+            }
+
             errors.put(error.getField(), message);
         });
 
-        // Nối các lỗi lại thành một chuỗi
         String errorMessage = errors.entrySet().stream()
                 .map(entry -> entry.getKey() + ": " + entry.getValue())
                 .collect(Collectors.joining("; "));
@@ -177,67 +198,121 @@ public class GlobalExceptionHandler {
     // Xử lý ResourceAlreadyExistsException, khi tài nguyên đã tồn tại
     @ExceptionHandler(ResourceAlreadyExistsException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
-    public ErrorResponse handleResourceAlreadyExists(ResourceAlreadyExistsException e, WebRequest request) {
+    public ErrorResponse handleResourceAlreadyExists(ResourceAlreadyExistsException e, WebRequest request, Locale locale) {
+
+        String code = e.getMessage() != null ? e.getMessage() : "";
+        String msg = messageSource.getMessage(code, null, code, locale);
 
         return ErrorResponse.builder()
                 .timestamp(new Date())
                 .status(CONFLICT.value())
                 .path(request.getDescription(false).replace("uri=", ""))
                 .error(CONFLICT.getReasonPhrase())
-                .message(e.getMessage())
+                .message(msg)
                 .build();
     }
 
     // Xử lý InvalidDataException, khi dữ liệu không hợp lệ
     @ExceptionHandler(InvalidDataException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
-    public ErrorResponse handleDuplicateKeyException(InvalidDataException e, WebRequest request) {
+    public ErrorResponse handleDuplicateKeyException(InvalidDataException e, WebRequest request, Locale locale) {
+
+        String code = e.getMessage() != null ? e.getMessage() : "";
+        String msg = messageSource.getMessage(code, null, code, locale);
 
         return ErrorResponse.builder()
                 .timestamp(new Date())
                 .status(CONFLICT.value())
                 .path(request.getDescription(false).replace("uri=", ""))
                 .error(CONFLICT.getReasonPhrase())
-                .message(e.getMessage())
+                .message(msg)
                 .build();
     }
 
     @ExceptionHandler(SemanticException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public ErrorResponse handleDatabaseExceptions(Exception ex, WebRequest request) {
+    public ErrorResponse handleDatabaseExceptions(Exception e, WebRequest request, Locale locale) {
+
+        String code = e.getMessage() != null ? e.getMessage() : "";
+        String msg = messageSource.getMessage(code, null, code, locale);
 
         return ErrorResponse.builder()
                 .timestamp(new Date())
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .path(request.getDescription(false).replace("uri=", ""))
                 .error(HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase())
-                .message("Lỗi máy chủ khi xử lý dữ liệu.")
+                .message(msg)
                 .build();
     }
 
     @ExceptionHandler(StorageException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public ErrorResponse handleStorageException(StorageException ex, WebRequest request) {
+    public ErrorResponse handleStorageException(StorageException e, WebRequest request, Locale locale) {
+
+        String code = e.getMessage() != null ? e.getMessage() : "";
+        String msg = messageSource.getMessage(code, null, code, locale);
+
         return ErrorResponse.builder()
                 .timestamp(new Date())
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .path(request.getDescription(false).replace("uri=", ""))
                 .error(HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase())
-                .message(ex.getMessage())
+                .message(msg)
+                .build();
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleHttpMessageNotReadable(
+            HttpMessageNotReadableException ex,
+            WebRequest request,
+            Locale locale
+    ) {
+        Throwable cause = ex.getCause();
+        String messageKey = "error.json.malformed"; // Key mặc định
+
+        // Check xem có phải lỗi do sai định dạng dữ liệu (Date, Enum, int...) không
+        if (cause instanceof InvalidFormatException invalidEx) {
+            // Nếu kiểu dữ liệu bị sai là LocalDate -> Trả lỗi ngày tháng
+            if (invalidEx.getTargetType().equals(java.time.LocalDate.class)) {
+                messageKey = "error.date.format";
+            }
+            // Nếu kiểu dữ liệu bị sai là Enum -> Trả lỗi Enum
+            else if (invalidEx.getTargetType().isEnum()) {
+                messageKey = "error.enum.invalid";
+            }
+            // Có thể thêm case cho Integer, Long nếu muốn
+        }
+        // Check lỗi thiếu trường bắt buộc khi deserialize (nếu dùng @JsonRequired)
+        else if (cause instanceof MismatchedInputException) {
+            messageKey = "error.json.mismatched";
+        }
+
+        String message = messageSource.getMessage(messageKey, null, "Invalid JSON format", locale);
+
+        return ErrorResponse.builder()
+                .timestamp(new Date())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .path(request.getDescription(false).replace("uri=", ""))
+                .error("Invalid Payload Format")
+                .message(message)
                 .build();
     }
 
     // Xử lý tất cả các ngoại lệ khác
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public ErrorResponse handleAll(Exception ex, WebRequest request) {
+    public ErrorResponse handleAll(Exception e, WebRequest request, Locale locale) {
+
+        String code = e.getMessage() != null ? e.getMessage() : "";
+        String msg = messageSource.getMessage(code, null, code, locale);
 
         return ErrorResponse.builder()
                 .timestamp(new Date())
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .path(request.getDescription(false).replace("uri=", ""))
                 .error(HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase())
-                .message(ex.getMessage())
+                .message(msg)
                 .build();
     }
 }

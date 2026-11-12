@@ -34,7 +34,7 @@ public class Student extends BaseEntity {
     @Column(name = "email", unique = true, nullable = false)
     String email;
 
-    @Column(name = "phone_number")
+    @Column(name = "phone_number", unique = true)
     String phoneNumber;
 
     @Column(name = "address")

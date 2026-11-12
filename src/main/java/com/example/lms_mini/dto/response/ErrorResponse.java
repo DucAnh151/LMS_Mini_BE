@@ -1,4 +1,4 @@
-package com.example.lms_mini.dto;
+package com.example.lms_mini.dto.response;
 
 import lombok.Builder;
 import lombok.Getter;
