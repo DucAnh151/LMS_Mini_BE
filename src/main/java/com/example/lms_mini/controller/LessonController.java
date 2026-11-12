@@ -7,7 +7,6 @@ import com.example.lms_mini.service.LessonService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import org.springframework.context.MessageSource;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -41,8 +40,8 @@ public class LessonController {
                 .build();
     }
 
-    @PutMapping("lessons/{lessonId}")
-    public DataResponse<?> updateLesson(@Min(value = 1) @PathVariable(value = "lessonId") Long lessonId,
+    @PutMapping("/lessons/{lessonId}")
+    public DataResponse<?> updateLesson(@Min(value = 1) @PathVariable Long lessonId,
                                         @Valid @ModelAttribute LessonUpdateDTO dto,
                                         @RequestParam(value = "videos", required = false) List<MultipartFile> videos,
                                         @RequestParam(value = "thumbnails", required = false) List<MultipartFile> thumbnails,
@@ -51,15 +50,26 @@ public class LessonController {
                                         @RequestParam(value = "chosenPrimaryThumbnailId", required = false) Long chosenPrimaryThumbnailId,
                                         @RequestParam(value = "deletedResourceIds", required = false) List<Long> deletedResourceIds,
                                         Locale locale) {
+
         return DataResponse.builder()
                 .status(200)
                 .message(messageSource.getMessage("lesson.update.success", null, locale))
-                .data(lessonService.updateLesson(lessonId, dto, thumbnails, videos, documents, chosenPrimaryVideoId, chosenPrimaryThumbnailId, deletedResourceIds))
+                .data(lessonService.updateLesson(
+                        lessonId,
+                        dto,
+                        thumbnails,
+                        videos,
+                        documents,
+                        chosenPrimaryVideoId,
+                        chosenPrimaryThumbnailId,
+                        deletedResourceIds))
                 .build();
     }
 
     @GetMapping("/courses/{courseId}/lessons")
-    public DataResponse<?> getLessonsByCourseId(@Min(value = 1) @PathVariable Long courseId, Locale locale) {
+    public DataResponse<?> getLessonsByCourseId(@Min(value = 1) @PathVariable Long courseId,
+                                                Locale locale) {
+
         return DataResponse.builder()
                 .status(200)
                 .message(messageSource.getMessage("common.success", null, locale))
@@ -68,7 +78,9 @@ public class LessonController {
     }
 
     @GetMapping("/lessons/{lessonId}")
-    public DataResponse<?> getLessonDetails(@Min(value = 1) @PathVariable Long lessonId, Locale locale) {
+    public DataResponse<?> getLessonDetails(@Min(value = 1) @PathVariable Long lessonId,
+                                            Locale locale) {
+
         return DataResponse.builder()
                 .status(200)
                 .message(messageSource.getMessage("common.success", null, locale))
@@ -77,24 +89,27 @@ public class LessonController {
     }
 
     @DeleteMapping("/lessons/{lessonId}")
-    public DataResponse<?> deleteLesson(@Min(value = 1) @PathVariable Long lessonId, Locale locale) {
+    public DataResponse<?> deleteLesson(@Min(value = 1) @PathVariable Long lessonId,
+                                        Locale locale) {
+
         lessonService.softDeteletionLesson(lessonId);
+
         return DataResponse.builder()
                 .status(200)
                 .message(messageSource.getMessage("lesson.delete.success", null, locale))
                 .build();
     }
-}
 
+    @PatchMapping("/lessons/{lessonId}/restore")
+    public DataResponse<Long> restoreLesson(@Min(value = 1) @PathVariable Long lessonId,
+                                            Locale locale) {
 
-    @PatchMapping("/lessons/{id}/restore")
-    public DataResponse<Long> restoreLesson(
-            @Min(value = 1) @PathVariable Long id,
-            Locale locale) {
-        Long restoredId = lessonService.restoreLesson(id);
+        Long restoredId = lessonService.restoreLesson(lessonId);
+
         return DataResponse.<Long>builder()
-                .status(HttpStatus.OK.value())
+                .status(200)
                 .message(messageSource.getMessage("lesson.restore.success", null, locale))
                 .data(restoredId)
                 .build();
     }
+}

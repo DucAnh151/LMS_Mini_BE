@@ -32,13 +32,18 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     Optional<Student> findByIdentityNumberAndIdNot(String identityNumber, Long id);
 
     @Query("SELECT new com.example.lms_mini.dto.response.student.StudentSearchResDTO(" +
-            "s.id, s.fullName, s.email, s.phoneNumber, s.birthDate, s.gender, s.address, s.status) " +
+            "s.id, " +
+            "(SELECT r.url FROM Resource r " +
+            " WHERE r.objectId = s.id " +
+            " AND r.objectType = 'STUDENT' " +
+            " AND r.resourceType = 'AVATAR' " +
+            " AND r.isPrimary = true), " +
+            "s.fullName, s.email, s.phoneNumber, s.birthDate, s.gender, s.address, s.status) " +
             "FROM Student s " +
-            "WHERE 1=1 " +
-            "AND (:keyword IS NULL OR (" +
-            "   LOWER(s.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\' OR " +
-            "   LOWER(s.email) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\' OR " +
-            "   s.phoneNumber LIKE CONCAT('%', :keyword, '%') ESCAPE '\\')) " +
+            "WHERE (:keyword IS NULL OR (" +
+            " LOWER(s.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\' OR " +
+            " LOWER(s.email) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\' OR " +
+            " s.phoneNumber LIKE CONCAT('%', :keyword, '%') ESCAPE '\\')) " +
             "AND (:status IS NULL OR s.status = :status)")
     Page<StudentSearchResDTO> searchStudents(
             @Param("keyword") String keyword,
