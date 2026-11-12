@@ -14,6 +14,8 @@ public interface LessonService {
 
     List<LessonBasicResponseDTO> getLessonsByCourseId(Long courseId);
 
+    Long restoreLesson(Long id);
+
     LessonDetailsDTO getLessonDetails(Long lessonId);
 
     LessonBasicResponseDTO updateLesson(Long lessonId,
