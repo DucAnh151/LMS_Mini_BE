@@ -1,5 +1,6 @@
 package com.example.lms_mini.service.impl;
 
+import com.example.lms_mini.Utils.EnumLabelHelper;
 import com.example.lms_mini.Utils.EscapeHelper;
 import com.example.lms_mini.Utils.FullUrlHelper;
 import com.example.lms_mini.dto.request.course.CourseRequestDTO;
@@ -205,7 +206,7 @@ public class    CourseServiceImpl implements CourseService {
                 while (true) {
                     Pageable pageable = PageRequest.of(page, BATCH_SIZE);
 
-                    Page<CourseBasicResponseDTO> coursePage = courseRepository.searchCourses(keyword, level, minPrice, maxPrice, Status.ACTIVE, pageable);
+                    Page<CourseBasicResponseDTO> coursePage = courseRepository.searchCourses(EscapeHelper.escapeLike(keyword), level, minPrice, maxPrice, Status.ACTIVE, pageable);
 
                     List<CourseBasicResponseDTO> courses = coursePage.getContent();
 
@@ -225,11 +226,10 @@ public class    CourseServiceImpl implements CourseService {
                         } else {
                             priceCell.setCellValue(0);
                         }
-                        String levelStr = (course.getLevel() != null) ? course.getLevel().name() : "";
-                        row.createCell(4).setCellValue(levelStr);
+                        // Xuất tên hiển thị tiếng Việt thay vì tên enum (BEGINNER/ACTIVE...)
+                        row.createCell(4).setCellValue(EnumLabelHelper.label(course.getLevel()));
                         row.createCell(5).setCellValue(course.getInstructorName());
-                        String statusStr = (course.getStatus() != null) ? course.getStatus().name() : "";
-                        row.createCell(6).setCellValue(statusStr);
+                        row.createCell(6).setCellValue(EnumLabelHelper.label(course.getStatus()));
                     }
                     page++;
                 }
