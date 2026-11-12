@@ -17,18 +17,6 @@ import java.time.LocalDate;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Enrollment extends BaseEntity {
 
-    @Column(length = 50, nullable = false)
-    LocalDate enrollmentDate;
-
-    @Column(columnDefinition = "DOUBLE DEFAULT 0.0")
-    Double progress;
-
-    @Column(columnDefinition = "INTEGER DEFAULT 0")
-    Integer rating;
-
-    @Column(columnDefinition = "TEXT")
-    String review;
-
     // Relationships
 
     // Relationship with Student

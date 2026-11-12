@@ -7,7 +7,9 @@ import com.example.lms_mini.dto.response.course.CourseBasicResponseDTO;
 import com.example.lms_mini.dto.response.PageResponse;
 import com.example.lms_mini.dto.response.course.CourseDetailsDTO;
 import com.example.lms_mini.enums.CourseLevel;
+import com.example.lms_mini.enums.Status;
 import com.example.lms_mini.service.CourseService;
+import com.example.lms_mini.service.EnrollmentService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -38,10 +40,12 @@ public class CourseController {
 
     private final CourseService courseService;
     private final MessageSource messageSource;
+    private final EnrollmentService enrollmentService;
 
-    public CourseController(CourseService courseService, MessageSource messageSource) {
+    public CourseController(CourseService courseService, MessageSource messageSource, EnrollmentService enrollmentService) {
         this.courseService = courseService;
         this.messageSource = messageSource;
+        this.enrollmentService = enrollmentService;
     }
 
     /*
@@ -104,9 +108,9 @@ public class CourseController {
                                          @RequestParam(required = false) CourseLevel level,
                                          @Positive(message = "course.price.positive") @RequestParam(required = false) BigDecimal minPrice,
                                          @Positive(message = "course.price.positive") @RequestParam(required = false) BigDecimal maxPrice,
-                                         @Min(value = 0, message = "{common.page.min}") @RequestParam(defaultValue = "0") int page,
+                                         @Min(value = 0, message = "{common.page.min}") @RequestParam(required = false, defaultValue = "0") int page,
                                          @Max(value = 100, message = "{common.size.max}")
-                                         @Min(value = 1, message = "{common.size.min}") @RequestParam(defaultValue = "10") int size,
+                                         @Min(value = 1, message = "{common.size.min}") @RequestParam(required = false, defaultValue = "10") int size,
                                          @PageableDefault(sort = "createdDate", direction = Sort.Direction.DESC) Sort sort,
                                          Locale locale) {
         Pageable pageable = PageRequest.of(page, size, sort);
@@ -114,6 +118,37 @@ public class CourseController {
         Page<CourseBasicResponseDTO> pageData = courseService.searchCourses(keyword, level, minPrice, maxPrice, pageable);
 
         PageResponse<List<CourseBasicResponseDTO>> response = PageResponse.<List<CourseBasicResponseDTO>>builder()
+                .data(pageData.getContent())
+                .currentPage(pageData.getNumber())
+                .pageSize(pageData.getSize())
+                .totalElements(pageData.getTotalElements())
+                .totalPages(pageData.getTotalPages())
+                .hasNext(pageData.hasNext())
+                .hasPrevious(pageData.hasPrevious())
+                .build();
+
+        return DataResponse.builder()
+                .status(HttpStatus.OK.value())
+                .message(messageSource.getMessage("common.success", null, locale))
+                .data(response)
+                .build();
+    }
+
+
+    @GetMapping("{courseId}/students")
+    public DataResponse<?> getStudentsByCourseId(@Min(value = 1) @PathVariable Long courseId,
+                                                 @RequestParam(required = false) String keyword,
+                                                 @RequestParam(required = false) Status status,
+                                                 @Min(value = 0, message = "{common.page.min}") @RequestParam(required = false, defaultValue = "0") int page,
+                                                 @Max(value = 100, message = "{common.size.max}")
+                                                 @Min(value = 1, message = "{common.size.min}") @RequestParam(required = false, defaultValue = "10") int size,
+                                                 @PageableDefault(sort = "createdDate", direction = Sort.Direction.DESC) Sort sort,
+                                                 Locale locale) {
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<?> pageData = enrollmentService.getStudentsByCourseId(courseId, keyword, status, pageable);
+
+        PageResponse<List<?>> response = PageResponse.<List<?>>builder()
                 .data(pageData.getContent())
                 .currentPage(pageData.getNumber())
                 .pageSize(pageData.getSize())
