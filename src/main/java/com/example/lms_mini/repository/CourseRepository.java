@@ -29,7 +29,10 @@ public interface CourseRepository extends JpaRepository<Course,Long> {
             "(SELECT r.url FROM Resource r WHERE r.objectId = c.id AND r.objectType = 'COURSE' AND r.resourceType = 'THUMBNAIL' AND r.isPrimary = true AND r.status = :status)) " +
             "FROM Course c " +
             "WHERE 1=1 " +
-            "AND (:keyword IS NULL OR (c.name LIKE %:keyword% ESCAPE '\\' OR c.instructorName LIKE %:keyword% ESCAPE '\\')) " +
+            "AND (:keyword IS NULL OR (" +
+            "   LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\' OR " +
+            "   LOWER(c.code) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\' OR " +
+            "   LOWER(c.instructorName) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '\\')) " +
             "AND (:level IS NULL OR c.level = :level) " +
             "AND (:minPrice IS NULL OR c.price >= :minPrice) " +
             "AND (:maxPrice IS NULL OR c.price <= :maxPrice)")

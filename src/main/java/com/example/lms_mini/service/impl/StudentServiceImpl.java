@@ -1,5 +1,6 @@
 package com.example.lms_mini.service.impl;
 
+import com.example.lms_mini.Utils.EnumLabelHelper;
 import com.example.lms_mini.Utils.EscapeHelper;
 import com.example.lms_mini.Utils.FullUrlHelper;
 import com.example.lms_mini.dto.request.student.StudentRequestDTO;
@@ -288,13 +289,12 @@ public class StudentServiceImpl implements StudentService {
                             dobCell.setCellValue("");
                         }
 
-                        String genderStr = (student.getGender() != null) ? student.getGender().name() : "";
-                        row.createCell(5).setCellValue(genderStr);
+                        // Xuất tên hiển thị tiếng Việt thay vì tên enum (MALE/FEMALE/OTHER)
+                        row.createCell(5).setCellValue(EnumLabelHelper.label(student.getGender()));
 
                         row.createCell(6).setCellValue(student.getAddress());
 
-                        String statusStr = (student.getStatus() != null) ? student.getStatus().name() : "";
-                        row.createCell(7).setCellValue(statusStr);
+                        row.createCell(7).setCellValue(EnumLabelHelper.label(student.getStatus()));
                     }
 
                     page++;
