@@ -1,8 +1,8 @@
 package com.example.lms_mini.controller;
 
-import com.example.lms_mini.dto.request.StudentRequestDTO;
-import com.example.lms_mini.dto.request.StudentSearchReqDTO;
-import com.example.lms_mini.dto.request.StudentUpdateDTO;
+import com.example.lms_mini.dto.request.student.StudentRequestDTO;
+import com.example.lms_mini.dto.request.student.StudentSearchReqDTO;
+import com.example.lms_mini.dto.request.student.StudentUpdateDTO;
 import com.example.lms_mini.dto.response.DataResponse;
 import com.example.lms_mini.service.StudentService;
 import jakarta.validation.Valid;

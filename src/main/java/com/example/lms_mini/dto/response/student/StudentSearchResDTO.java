@@ -1,4 +1,4 @@
-package com.example.lms_mini.dto.response;
+package com.example.lms_mini.dto.response.student;
 
 import com.example.lms_mini.enums.Gender;
 import com.example.lms_mini.enums.Status;

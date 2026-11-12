@@ -1,6 +1,6 @@
 package com.example.lms_mini.repository;
 
-import com.example.lms_mini.dto.response.StudentSearchResDTO;
+import com.example.lms_mini.dto.response.student.StudentSearchResDTO;
 import com.example.lms_mini.entity.Student;
 import com.example.lms_mini.enums.Status;
 import org.springframework.data.domain.Page;
@@ -30,9 +30,8 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     Optional<Student> findByIdentityNumberAndStatusAndIdNot(String identityNumber, Status status, Long id);
 
 
-    @Query("SELECT new com.example.lms_mini.dto.response.StudentSearchResDTO(" +
-            "s.id, s.fullName, s.email, s.phoneNumber, s.birthDate, s.gender, s.address, s.status" +
-            ") " +
+    @Query("SELECT new com.example.lms_mini.dto.response.student.StudentSearchResDTO(" +
+            "s.id, s.fullName, s.email, s.phoneNumber, s.birthDate, s.gender, s.address, s.status) " +
             "FROM Student s " +
             "WHERE 1=1 " +
             "AND (:fullName IS NULL OR s.fullName LIKE %:fullName% ESCAPE '\\') " +

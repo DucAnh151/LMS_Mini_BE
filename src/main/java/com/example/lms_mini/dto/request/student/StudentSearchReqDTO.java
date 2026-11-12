@@ -1,4 +1,4 @@
-package com.example.lms_mini.dto.request;
+package com.example.lms_mini.dto.request.student;
 
 import com.example.lms_mini.enums.Status;
 import lombok.AccessLevel;

@@ -1,4 +1,4 @@
-package com.example.lms_mini.dto.response;
+package com.example.lms_mini.dto.response.student;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;

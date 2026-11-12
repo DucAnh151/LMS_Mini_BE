@@ -1,9 +1,9 @@
 package com.example.lms_mini.mapper;
 
-import com.example.lms_mini.dto.request.StudentRequestDTO;
-import com.example.lms_mini.dto.request.StudentUpdateDTO;
-import com.example.lms_mini.dto.response.StudentBasicResponseDTO;
-import com.example.lms_mini.dto.response.StudentDetailsDTO;
+import com.example.lms_mini.dto.request.student.StudentRequestDTO;
+import com.example.lms_mini.dto.request.student.StudentUpdateDTO;
+import com.example.lms_mini.dto.response.student.StudentBasicResponseDTO;
+import com.example.lms_mini.dto.response.student.StudentDetailsDTO;
 import com.example.lms_mini.entity.Student;
 import org.mapstruct.*;
 

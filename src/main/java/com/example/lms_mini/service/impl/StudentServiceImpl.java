@@ -1,13 +1,14 @@
 package com.example.lms_mini.service.impl;
 
 import com.example.lms_mini.Utils.EscapeHelper;
-import com.example.lms_mini.dto.request.StudentRequestDTO;
-import com.example.lms_mini.dto.request.StudentSearchReqDTO;
-import com.example.lms_mini.dto.request.StudentUpdateDTO;
+import com.example.lms_mini.Utils.FullUrlHelper;
+import com.example.lms_mini.dto.request.student.StudentRequestDTO;
+import com.example.lms_mini.dto.request.student.StudentSearchReqDTO;
+import com.example.lms_mini.dto.request.student.StudentUpdateDTO;
 import com.example.lms_mini.dto.response.PageResponse;
-import com.example.lms_mini.dto.response.StudentBasicResponseDTO;
-import com.example.lms_mini.dto.response.StudentDetailsDTO;
-import com.example.lms_mini.dto.response.StudentSearchResDTO;
+import com.example.lms_mini.dto.response.student.StudentBasicResponseDTO;
+import com.example.lms_mini.dto.response.student.StudentDetailsDTO;
+import com.example.lms_mini.dto.response.student.StudentSearchResDTO;
 import com.example.lms_mini.entity.Resource;
 import com.example.lms_mini.entity.Student;
 import com.example.lms_mini.enums.ObjectType;
@@ -29,7 +30,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.io.IOException;
 import java.util.List;
@@ -62,11 +62,7 @@ public class StudentServiceImpl implements StudentService {
                 .orElse(null);
 
         if (avatarResource != null) {
-            String fullUrl = ServletUriComponentsBuilder.fromCurrentContextPath()
-                    .path("/api/v1/files/")
-                    .path(avatarResource.getUrl())
-                    .toUriString();
-
+            String fullUrl = FullUrlHelper.getFullUrl(avatarResource.getUrl());
             response.setAvatarUrl(fullUrl);
         }
 
