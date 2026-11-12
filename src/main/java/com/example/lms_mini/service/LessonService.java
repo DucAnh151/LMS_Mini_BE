@@ -10,7 +10,7 @@ import java.util.List;
 
 public interface LessonService {
 
-    void createLesson(Long courseId, LessonRequestDTO dto, List<MultipartFile> thumbnails, List<MultipartFile> videos, List<MultipartFile> documents);
+    void createLesson(Long courseId, LessonRequestDTO dto, List<MultipartFile> videos, List<MultipartFile> thumbnails, List<MultipartFile> documents);
 
     List<LessonBasicResponseDTO> getLessonsByCourseId(Long courseId);
 

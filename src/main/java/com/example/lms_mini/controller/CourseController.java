@@ -24,6 +24,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -90,6 +91,16 @@ public class CourseController {
         return DataResponse.builder()
                 .status(HttpStatus.NO_CONTENT.value())
                 .message(messageSource.getMessage("course.delete.success", null, locale))
+                .build();
+    }
+
+    @PatchMapping("/{id}/restore")
+    public DataResponse<?> restoreCourse(@Min(value = 1) @PathVariable Long id, Locale locale) {
+        long restoredId = courseService.restoreCourse(id);
+        return DataResponse.builder()
+                .status(HttpStatus.OK.value())
+                .message(messageSource.getMessage("course.restore.success", null, locale))
+                .data(restoredId)
                 .build();
     }
 

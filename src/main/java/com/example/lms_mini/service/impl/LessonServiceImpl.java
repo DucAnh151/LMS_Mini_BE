@@ -12,7 +12,6 @@ import com.example.lms_mini.entity.Resource;
 import com.example.lms_mini.enums.ObjectType;
 import com.example.lms_mini.enums.ResourceType;
 import com.example.lms_mini.enums.Status;
-import com.example.lms_mini.exception.InvalidDataException;
 import com.example.lms_mini.exception.ResourceAlreadyExistsException;
 import com.example.lms_mini.exception.ResourceNotFoundException;
 import com.example.lms_mini.mapper.LessonMapper;
@@ -20,32 +19,31 @@ import com.example.lms_mini.mapper.ResourceMapper;
 import com.example.lms_mini.repository.CourseRepository;
 import com.example.lms_mini.repository.LessonRepository;
 import com.example.lms_mini.repository.ResourceRepository;
-import com.example.lms_mini.service.FileStorageService;
 import com.example.lms_mini.service.LessonService;
+import com.example.lms_mini.service.ResourceService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class LessonServiceImpl implements LessonService {
 
     private final LessonRepository lessonRepository;
-    private final FileStorageService fileStorageService;
     private final ResourceRepository resourceRepository;
     private final CourseRepository courseRepository;
     private final LessonMapper lessonMapper;
     private final ResourceMapper resourceMapper;
+    private final ResourceService resourceService;
 
-    public LessonServiceImpl(LessonRepository lessonRepository, FileStorageService fileStorageService, ResourceRepository resourceRepository, CourseRepository courseRepository, LessonMapper lessonMapper, ResourceMapper resourceMapper) {
+    public LessonServiceImpl(LessonRepository lessonRepository, ResourceRepository resourceRepository, CourseRepository courseRepository, LessonMapper lessonMapper, ResourceMapper resourceMapper, ResourceService resourceService) {
         this.lessonRepository = lessonRepository;
-        this.fileStorageService = fileStorageService;
         this.resourceRepository = resourceRepository;
         this.courseRepository = courseRepository;
         this.lessonMapper = lessonMapper;
         this.resourceMapper = resourceMapper;
+        this.resourceService = resourceService;
     }
 
     @Override
@@ -63,22 +61,32 @@ public class LessonServiceImpl implements LessonService {
             throw new ResourceAlreadyExistsException("lesson.code.exists");
         }
 
+        // Kiểm tra orderIndex không trùng lặp trong cùng một Course
+        boolean existsOrderIndex = lessonRepository.existsByCourseIdAndOrderIndexAndStatus(
+                courseId, request.getOrderIndex(), Status.ACTIVE);
+        if (existsOrderIndex) {
+            throw new ResourceAlreadyExistsException("lesson.order-index.exists");
+        }
+
         Lesson lesson = lessonMapper.toEntity(request);
         lesson.setCourse(course);
 
         lesson = lessonRepository.save(lesson);
 
-        saveLessonResources(videos, lesson.getId(), ResourceType.VIDEO, true);
+        if(videos!=null && !videos.isEmpty()) {
+            resourceService.saveResourceList(lesson.getId(), ObjectType.LESSON, ResourceType.VIDEO, videos, true);
+        }
+        // Thumbnails là bắt buộc
+        resourceService.saveResourceList(lesson.getId(), ObjectType.LESSON, ResourceType.THUMBNAIL, thumbnails, true);
 
-        saveLessonResources(thumbnails, lesson.getId(), ResourceType.THUMBNAIL, true);
-
-        saveLessonResources(documents, lesson.getId(), ResourceType.DOCUMENT, false);
-
+        if (documents != null && !documents.isEmpty()) {
+            resourceService.saveResourceList(lesson.getId(), ObjectType.LESSON, ResourceType.DOCUMENT, documents, false);
+        }
     }
 
     @Override
     public List<LessonBasicResponseDTO> getLessonsByCourseId(Long courseId) {
-        // 1. Validate Course tồn tại (Optional: Check thêm Status ACTIVE nếu cần)
+        // 1. Validate Course tồn tại
         if (!courseRepository.existsById(courseId)) {
             throw new ResourceNotFoundException("course.notfound");
         }
@@ -131,6 +139,7 @@ public class LessonServiceImpl implements LessonService {
     }
 
     @Override
+    @Transactional(rollbackFor = Throwable.class)
     public LessonBasicResponseDTO updateLesson(Long lessonId, LessonUpdateDTO dto,
                                                List<MultipartFile> thumbnails,
                                                List<MultipartFile> videos,
@@ -149,6 +158,16 @@ public class LessonServiceImpl implements LessonService {
             }
         }
 
+        // Kiểm tra orderIndex không trùng lặp trong cùng một Course
+        if (dto.getOrderIndex() != null && !dto.getOrderIndex().equals((lesson.getOrderIndex()))) {
+            boolean existsOrderIndex = lessonRepository.existsByCourseIdAndOrderIndexAndStatus(
+                    lesson.getCourse().getId(), dto.getOrderIndex(), Status.ACTIVE);
+            if (existsOrderIndex) {
+                throw new ResourceAlreadyExistsException("lesson.order-index.exists");
+            }
+        }
+
+
         // Update partial
         lessonMapper.updateLessonFromDto(lesson, dto);
         lesson = lessonRepository.save(lesson);
@@ -161,18 +180,22 @@ public class LessonServiceImpl implements LessonService {
         }
 
         // Thêm mới resources nếu có
-        handleResourceUpdate(lessonId, ResourceType.VIDEO, videos, ObjectType.LESSON, chosenPrimaryVideoId);
-        handleResourceUpdate(lessonId, ResourceType.THUMBNAIL, thumbnails, ObjectType.LESSON, chosenPrimaryThumbnailId);
-
+        if(videos!=null && !videos.isEmpty()) {
+            resourceService.handleResourceUpdate(lessonId, ResourceType.VIDEO, ObjectType.LESSON, videos, chosenPrimaryVideoId);
+        }
+        if(thumbnails!=null && !thumbnails.isEmpty()) {
+            resourceService.handleResourceUpdate(lessonId, ResourceType.THUMBNAIL, ObjectType.LESSON, thumbnails, chosenPrimaryThumbnailId);
+        }
         if (documents != null && !documents.isEmpty()) {
-            saveLessonResources(documents, lessonId, ResourceType.DOCUMENT, false);
+            resourceService.saveResourceList(lesson.getId(), ObjectType.LESSON, ResourceType.DOCUMENT, documents, false);
         }
 
-        // Trả về LessonBasicResponseDTO
         return lessonMapper.toBasicResponseDTO(lesson);
     }
 
+
     @Override
+    @Transactional(rollbackFor = Throwable.class)
     public void softDeteletionLesson(Long lessonId) {
         // Kiểm tra lesson tồn tại
         Lesson lesson = lessonRepository.findByIdAndStatus(lessonId, Status.ACTIVE)
@@ -181,74 +204,4 @@ public class LessonServiceImpl implements LessonService {
         lessonRepository.save(lesson);
     }
 
-    private String saveLessonResources(List<MultipartFile> files, Long lessonId, ResourceType type, boolean autoPickFirstAsPrimary) {
-        if (files == null || files.isEmpty()) {
-            return null;
-        }
-
-        String primaryFilename = null;
-
-        for (int i = 0; i < files.size(); i++) {
-            MultipartFile file = files.get(i);
-            String filename = fileStorageService.storeFile(file);
-
-            Resource resource = new Resource();
-            resource.setObjectId(lessonId);
-            resource.setObjectType(ObjectType.LESSON); // Object là LESSON
-            resource.setResourceType(type);
-            resource.setUrl(filename);
-
-            // LOGIC CỦA BRO: Auto pick first as primary
-            boolean isPrimary = autoPickFirstAsPrimary && (i == 0);
-            resource.setIsPrimary(isPrimary);
-
-            // Capture lại tên file nếu nó là primary để trả về response
-            if (isPrimary) {
-                primaryFilename = filename;
-            }
-
-            resourceRepository.save(resource);
-        }
-
-        return primaryFilename;
-    }
-
-    private void handleResourceUpdate(Long lessonId, ResourceType type,
-                                      List<MultipartFile> newFiles,
-                                      ObjectType objectType,
-                                      Long chosenOldId) {
-        boolean hasNewFiles = (newFiles != null && !newFiles.isEmpty());
-        boolean hasChosenOld = (chosenOldId != null);
-
-        // Bước 1: Nếu có bất kỳ thay đổi nào về Primary -> Reset tất cả về false trước
-        if (hasNewFiles || hasChosenOld) {
-            resourceRepository.removeAllPrimaryResources(lessonId, objectType, type);
-        }
-
-        // Bước 2: Xử lý chọn Resource CŨ làm Primary (Ưu tiên 1)
-        if (hasChosenOld) {
-            Resource oldRes = resourceRepository.findById(chosenOldId)
-                    .orElseThrow(() -> new ResourceNotFoundException("resource.notfound"));
-
-            // Validate kỹ: Phải thuộc Lesson này, đúng Loại, và chưa bị Xóa
-            if (oldRes.getObjectId().equals(lessonId) && oldRes.getResourceType() == type && oldRes.getStatus() == Status.ACTIVE) {
-                oldRes.setIsPrimary(true);
-                resourceRepository.save(oldRes);
-            } else {
-                // Nếu ID gửi lên tào lao -> Bỏ qua hoặc ném lỗi tùy bro (ở đây tôi chọn ném lỗi cho chặt)
-                throw new InvalidDataException("resource.invalid");
-            }
-
-            // Nếu có file MỚI -> Lưu tất cả làm phụ (isPrimary = false)
-            if (hasNewFiles) {
-                saveLessonResources(newFiles, lessonId, type, false);
-            }
-        }
-        // Bước 3: Không chọn cũ, nhưng có MỚI (Ưu tiên 2)
-        else if (hasNewFiles) {
-            // Lưu list mới, file ĐẦU TIÊN (index 0) tự động làm Primary
-            saveLessonResources(newFiles, lessonId, type, true);
-        }
-        // Bước 4: Không làm gì -> Giữ nguyên trạng thái cũ
-    }
 }

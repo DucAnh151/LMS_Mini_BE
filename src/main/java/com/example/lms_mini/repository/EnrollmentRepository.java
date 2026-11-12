@@ -54,4 +54,6 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     @Query("UPDATE Enrollment e SET e.status = :status WHERE e.id IN :ids")
     void softDeleteByIds(@Param("ids") List<Long> ids,
                          @Param("status") Status status);
+
+    boolean existsByCourseIdAndStatus(Long courseId, Status status);
 }

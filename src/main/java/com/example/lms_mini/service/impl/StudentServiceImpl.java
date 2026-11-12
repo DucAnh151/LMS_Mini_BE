@@ -3,14 +3,14 @@ package com.example.lms_mini.service.impl;
 import com.example.lms_mini.Utils.EscapeHelper;
 import com.example.lms_mini.Utils.FullUrlHelper;
 import com.example.lms_mini.dto.request.student.StudentRequestDTO;
-import com.example.lms_mini.dto.request.student.StudentSearchReqDTO;
 import com.example.lms_mini.dto.request.student.StudentUpdateDTO;
-import com.example.lms_mini.dto.response.PageResponse;
+import com.example.lms_mini.dto.response.course.CourseBasicResponseDTO;
 import com.example.lms_mini.dto.response.student.StudentBasicResponseDTO;
 import com.example.lms_mini.dto.response.student.StudentDetailsDTO;
 import com.example.lms_mini.dto.response.student.StudentSearchResDTO;
 import com.example.lms_mini.entity.Resource;
 import com.example.lms_mini.entity.Student;
+import com.example.lms_mini.enums.CourseLevel;
 import com.example.lms_mini.enums.ObjectType;
 import com.example.lms_mini.enums.ResourceType;
 import com.example.lms_mini.enums.Status;
@@ -55,7 +55,7 @@ public class StudentServiceImpl implements StudentService {
         Student student = studentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("student.notfound"));
 
-        StudentDetailsDTO response = studentMapper.toDetailsDTO(student, null);
+        StudentDetailsDTO response = studentMapper.toDetailsDTO(student);
 
         Resource avatarResource = resourceRepository
                 .findByObjectIdAndObjectTypeAndIsPrimaryTrue(student.getId(), ObjectType.STUDENT)
@@ -70,28 +70,22 @@ public class StudentServiceImpl implements StudentService {
     }
 
     @Override
-    public PageResponse<?> searchStudents(StudentSearchReqDTO dto, Pageable pageable) {
+    public Page<StudentSearchResDTO> searchStudents(String keyword, Status status, Pageable pageable) {
 
-        String escapedName = EscapeHelper.escapeLike(dto.getFullName());
-        String escapedEmail = EscapeHelper.escapeLike(dto.getEmail());
-        String escapedPhone = EscapeHelper.escapeLike(dto.getPhoneNumber());
+        String searchKeyword = EscapeHelper.escapeLike(keyword);
+        return studentRepository.searchStudents(searchKeyword, status, pageable);
+    }
 
-        Page<?> studentPage = studentRepository.searchStudents(
-                escapedName,
-                escapedEmail,
-                escapedPhone,
-                dto.getStatus(),
-                pageable
-        );
-        return PageResponse.builder()
-                .data(studentPage.getContent())
-                .currentPage(studentPage.getNumber())
-                .pageSize(studentPage.getSize())
-                .totalElements(studentPage.getTotalElements())
-                .totalPages(studentPage.getTotalPages())
-                .hasNext(studentPage.hasNext())
-                .hasPrevious(studentPage.hasPrevious())
-                .build();
+    @Override
+    public Page<CourseBasicResponseDTO> getUnregisteredCourses(Long studentId, String keyword, CourseLevel level, Pageable pageable) {
+        // Kiểm tra tồn tại học viên
+        boolean isExists = studentRepository.existsById(studentId);
+        if(!isExists) {
+            throw new ResourceNotFoundException("student.notfound");
+        }
+
+        String searchKeyword = EscapeHelper.escapeLike(keyword);
+        return studentRepository.getUnregisteredCourses(studentId, searchKeyword, level, pageable);
     }
 
     @Transactional(rollbackFor = Throwable.class)
@@ -99,13 +93,13 @@ public class StudentServiceImpl implements StudentService {
     public StudentBasicResponseDTO createStudent(StudentRequestDTO studentRequestDTO, MultipartFile avatarImage) {
 
         // Valid unique fields
-        if(studentRepository.existsByEmailAndStatus(studentRequestDTO.getEmail(), Status.ACTIVE)) {
+        if(studentRepository.existsByEmail(studentRequestDTO.getEmail())) {
             throw new ResourceAlreadyExistsException("student.email.exists");
         }
-        if(studentRepository.existsByPhoneNumberAndStatus(studentRequestDTO.getPhoneNumber(), Status.ACTIVE)) {
+        if(studentRepository.existsByPhoneNumber(studentRequestDTO.getPhoneNumber())) {
             throw new ResourceAlreadyExistsException("student.phone_number.exists");
         }
-        if(studentRepository.existsByIdentityNumberAndStatus(studentRequestDTO.getIdentityNumber(), Status.ACTIVE)) {
+        if(studentRepository.existsByIdentityNumber(studentRequestDTO.getIdentityNumber())) {
             throw new ResourceAlreadyExistsException("student.identity_number.exists");
         }
 
@@ -120,30 +114,33 @@ public class StudentServiceImpl implements StudentService {
             savedAvatarUrl = saveStudentAvatar(avatarImage, student.getId());
         }
 
-        return studentMapper.toBasicResponseDTO(student, savedAvatarUrl);
+        StudentBasicResponseDTO dto = studentMapper.toBasicResponseDTO(student);
+        dto.setAvatarUrl(savedAvatarUrl);
+        return dto;
+
     }
 
     @Transactional(rollbackFor = Throwable.class)
     @Override
     public StudentBasicResponseDTO updateStudent(Long id, StudentUpdateDTO studentRequestDTO, MultipartFile avatarImage) {
 
-        // Check if student is active
+        // Kiểm tra tồn tại học viên
         Student existingStudent = studentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("student.notfound"));
 
         // Valid unique fields
         if(!existingStudent.getEmail().equals(studentRequestDTO.getEmail())) {
-            studentRepository.findByEmailAndStatusAndIdNot(studentRequestDTO.getEmail(), Status.ACTIVE, id)
+            studentRepository.findByEmailAndIdNot(studentRequestDTO.getEmail(), id)
                     .ifPresent(s -> { throw new ResourceAlreadyExistsException("student.email.exists"); });
         }
 
         if(!existingStudent.getPhoneNumber().equals(studentRequestDTO.getPhoneNumber())) {
-            studentRepository.findByPhoneNumberAndStatusAndIdNot(studentRequestDTO.getPhoneNumber(), Status.ACTIVE, id)
+            studentRepository.findByPhoneNumberAndIdNot(studentRequestDTO.getPhoneNumber(), id)
                     .ifPresent(s -> { throw new ResourceAlreadyExistsException("student.phone_number.exists"); });
         }
 
         if(!existingStudent.getIdentityNumber().equals(studentRequestDTO.getIdentityNumber())) {
-            studentRepository.findByIdentityNumberAndStatusAndIdNot(studentRequestDTO.getIdentityNumber(), Status.ACTIVE, id)
+            studentRepository.findByIdentityNumberAndIdNot(studentRequestDTO.getIdentityNumber(), id)
                     .ifPresent(s -> { throw new ResourceAlreadyExistsException("student.identity_number.exists");});
         }
 
@@ -175,17 +172,30 @@ public class StudentServiceImpl implements StudentService {
                 updatedAvatarUrl = existingAvatar.getUrl();
             }
         }
-        return studentMapper.toBasicResponseDTO(existingStudent, updatedAvatarUrl);
+        StudentBasicResponseDTO dto = studentMapper.toBasicResponseDTO(existingStudent);
+        dto.setAvatarUrl(updatedAvatarUrl);
+        return dto;
     }
 
     @Transactional(rollbackFor = Throwable.class)
     @Override
     public void softDelete(Long studentId) {
-        Student student = studentRepository.findByIdAndStatus(studentId, Status.ACTIVE)
+        Student student = studentRepository.findById(studentId)
                         .orElseThrow(() -> new ResourceNotFoundException("student.notfound"));
 
         student.setStatus(Status.DELETE);
         studentRepository.save(student);
+    }
+
+    @Transactional(rollbackFor = Throwable.class)
+    @Override
+    public long restoreStudent(Long studentId) {
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("student.notfound"));
+
+        student.setStatus(Status.ACTIVE);
+        studentRepository.save(student);
+        return student.getId();
     }
 
     private String saveStudentAvatar(MultipartFile avatarImage, Long studentId) {
@@ -193,6 +203,7 @@ public class StudentServiceImpl implements StudentService {
         Resource newAvatar = new Resource();
         newAvatar.setObjectId(studentId);
         newAvatar.setUrl(avatarUrl);
+        newAvatar.setFileName(avatarImage.getOriginalFilename());
         newAvatar.setObjectType(ObjectType.STUDENT);
         newAvatar.setResourceType(ResourceType.AVATAR);
         newAvatar.setIsPrimary(true);
@@ -201,13 +212,11 @@ public class StudentServiceImpl implements StudentService {
         return avatarUrl;
     }
 
-    @Transactional(rollbackFor = Throwable.class)
+    @Transactional(readOnly = true)
     @Override
-    public StreamingResponseBody exportStudents(StudentSearchReqDTO dto) {
+    public StreamingResponseBody exportStudents(String keyword, Status status) {
 
-        String escapedName = EscapeHelper.escapeLike(dto.getFullName());
-        String escapedEmail = EscapeHelper.escapeLike(dto.getEmail());
-        String escapedPhone = EscapeHelper.escapeLike(dto.getPhoneNumber());
+        String escapedName = EscapeHelper.escapeLike(keyword);
 
         return outputStream -> {
             try (SXSSFWorkbook workbook = new SXSSFWorkbook(100)) {
@@ -233,13 +242,7 @@ public class StudentServiceImpl implements StudentService {
                 while (true) {
                     Pageable pageable = PageRequest.of(page, BATCH_SIZE);
 
-                    Page<StudentSearchResDTO> studentPage = studentRepository.searchStudents(
-                            escapedName,
-                            escapedEmail,
-                            escapedPhone,
-                            dto.getStatus(),
-                            pageable
-                    );
+                    Page<StudentSearchResDTO> studentPage = studentRepository.searchStudents(escapedName, status, pageable);
 
                     List<StudentSearchResDTO> students = studentPage.getContent();
 

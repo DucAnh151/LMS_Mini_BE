@@ -29,4 +29,6 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
             "ORDER BY l.orderIndex ASC")
     List<LessonBasicResponseDTO> getLessonsByCourseId(@Param("courseId") Long courseId,
                                                       @Param("status") Status status);
+
+    boolean existsByCourseIdAndOrderIndexAndStatus(Long courseId, Integer orderIndex, Status status);
 }

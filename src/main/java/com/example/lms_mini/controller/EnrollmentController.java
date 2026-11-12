@@ -6,6 +6,7 @@ import com.example.lms_mini.service.EnrollmentService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import org.springframework.context.MessageSource;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -38,7 +39,6 @@ public class EnrollmentController {
 
     @PostMapping("")
     public DataResponse<?> registerCourses(@Valid @ModelAttribute EnrollmentRequestDTO dto, Locale locale) {
-
         return DataResponse.builder()
                 .status(201)
                 .message(messageSource.getMessage("enrollment.create.success", null, locale))
@@ -48,7 +48,7 @@ public class EnrollmentController {
 
     @DeleteMapping("/{id}")
     public DataResponse<?> softDeleteEnrollment(@Min(value = 1) @PathVariable Long id, Locale locale) {
-        enrollmentService.softDeleteRegistration(id);
+        enrollmentService.deleteRegistration(id);
         return DataResponse.builder()
                 .status(204)
                 .message(messageSource.getMessage("enrollment.delete.success", null, locale))
@@ -57,7 +57,7 @@ public class EnrollmentController {
 
     @DeleteMapping("/bulk-delete")
     public DataResponse<?> bulkSoftDeleteEnrollments(@RequestParam List<Long> ids, Locale locale) {
-        enrollmentService.softDeleteByIds(ids);
+        enrollmentService.deleteByIds(ids);
         return DataResponse.builder()
                 .status(204)
                 .message(messageSource.getMessage("enrollment.delete.success", null, locale))

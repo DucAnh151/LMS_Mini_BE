@@ -7,6 +7,7 @@ import com.example.lms_mini.enums.Status;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -19,7 +20,7 @@ public interface CourseRepository extends JpaRepository<Course,Long> {
 
     boolean existsByCode(String code);
 
-    Optional<Course> findByCodeAndStatusAndIdNot(String code, Status status, Long id);
+    Optional<Course> findByCodeAndIdNot(String code, Long id);
 
     Optional<Course> findByIdAndStatus(Long id, Status status);
 
@@ -40,4 +41,8 @@ public interface CourseRepository extends JpaRepository<Course,Long> {
             @Param("status") Status status,
             Pageable pageable
     );
+
+    @Modifying
+    @Query("UPDATE Course c SET c.status = :status WHERE c.id = :id")
+    void updateStatus(@Param("id") Long id, @Param("status") Status status);
 }

@@ -14,21 +14,21 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Lesson extends BaseEntity {
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     String title;
 
     @Column(name = "lesson_code", unique = true, nullable = false, length = 50)
     String lessonCode;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT", nullable = false, length = 100)
     String summary;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT", nullable = false, length = 500)
     String content;
 
     Integer durationInSeconds;
 
-    @Column(name = "order_index")
+    @Column(name = "order_index", nullable = false)
     Integer orderIndex;
 
     @Enumerated(EnumType.STRING)

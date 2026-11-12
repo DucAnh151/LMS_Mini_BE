@@ -26,15 +26,14 @@ public class LessonController {
         this.messageSource = messageSource;
     }
 
-    @Transactional(rollbackFor = Throwable.class)
     @PostMapping("/courses/{courseId}/lessons")
     public DataResponse<?> createLesson(@Min(value = 1) @PathVariable Long courseId,
                                         @Valid @ModelAttribute LessonRequestDTO request,
-                                        @RequestParam(value = "thumbnails", required = false) List<MultipartFile> videos,
-                                        @RequestParam(value = "videos", required = false) List<MultipartFile> thumbnails,
+                                        @RequestParam(value = "videos", required = false) List<MultipartFile> videos,
+                                        @RequestParam(value = "thumbnails") List<MultipartFile> thumbnails,
                                         @RequestParam(value = "documents", required = false) List<MultipartFile> documents,
                                         Locale locale) {
-        lessonService.createLesson(courseId, request, thumbnails, videos, documents);
+        lessonService.createLesson(courseId, request, videos, thumbnails, documents);
 
         return DataResponse.builder()
                 .status(201)
@@ -42,7 +41,6 @@ public class LessonController {
                 .build();
     }
 
-    @Transactional(rollbackFor = Throwable.class)
     @PutMapping("lessons/{lessonId}")
     public DataResponse<?> updateLesson(@Min(value = 1) @PathVariable(value = "lessonId") Long lessonId,
                                         @Valid @ModelAttribute LessonUpdateDTO dto,
@@ -78,7 +76,6 @@ public class LessonController {
                 .build();
     }
 
-    @Transactional(rollbackFor = Throwable.class)
     @DeleteMapping("/lessons/{lessonId}")
     public DataResponse<?> deleteLesson(@Min(value = 1) @PathVariable Long lessonId, Locale locale) {
         lessonService.softDeteletionLesson(lessonId);

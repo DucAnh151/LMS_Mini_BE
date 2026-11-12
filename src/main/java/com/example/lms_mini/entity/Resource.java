@@ -18,6 +18,9 @@ public class Resource extends BaseEntity {
     @Column(nullable = false)
     String url;
 
+    @Column(name = "file_name", nullable = false)
+    String fileName;
+
     @Column(name = "object_id", nullable = false)
     Long objectId;
 

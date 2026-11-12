@@ -21,6 +21,8 @@ public interface CourseService {
 
     void softDeleteCourse(Long id);
 
+    long restoreCourse(Long id);
+
     CourseDetailsDTO getCourseDetail(Long id);
 
     Page<CourseBasicResponseDTO> searchCourses(String keyword, CourseLevel level, BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable);

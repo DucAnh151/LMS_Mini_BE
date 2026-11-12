@@ -25,7 +25,7 @@ public class FileController {
 
     @GetMapping("/{fileName:.+}")
     public ResponseEntity<Resource> downloadFile(@PathVariable String fileName, HttpServletRequest request) {
-        // 1. Load file từ folder uploads (dùng service đã viết hôm qua)
+        // 1. Load file từ folder uploads
         Resource resource = fileStorageService.loadFileAsResource(fileName);
 
         // 2. Xác định Content-Type (image/jpeg, image/png...)
@@ -43,7 +43,6 @@ public class FileController {
         // 3. Trả về file
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
-                // Dòng dưới này để trình duyệt hiển thị ảnh luôn (inline) thay vì tải về
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
                 .body(resource);
     }
