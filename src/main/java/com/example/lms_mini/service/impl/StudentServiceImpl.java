@@ -255,6 +255,13 @@ public class StudentServiceImpl implements StudentService {
                     cell.setCellStyle(headerStyle);
                 }
 
+                // Đặt bề rộng cột (đơn vị = 1/256 ký tự) để tránh cột Ngày sinh bị hiển thị "#####"
+                // ID, Họ tên, Email, SĐT, Ngày sinh, Giới tính, Địa chỉ, Trạng thái
+                int[] COLUMN_WIDTHS = { 8, 26, 28, 16, 14, 12, 28, 14 };
+                for (int col = 0; col < COLUMN_WIDTHS.length; col++) {
+                    sheet.setColumnWidth(col, COLUMN_WIDTHS[col] * 256);
+                }
+
                 CellStyle dateCellStyle = workbook.createCellStyle();
                 dateCellStyle.setDataFormat(workbook.createDataFormat().getFormat("dd/MM/yyyy"));
 
