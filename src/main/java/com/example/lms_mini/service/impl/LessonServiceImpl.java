@@ -189,11 +189,13 @@ public class LessonServiceImpl implements LessonService {
             resourceRepository.softDeleteResources(deletedResourceIds, lessonId, ObjectType.LESSON, Status.DELETE);
         }
 
-        // Thêm mới resources nếu có
-        if(videos!=null && !videos.isEmpty()) {
+        // Thêm mới resources và/hoặc đổi primary.
+        // LƯU Ý: phải gọi cả khi CHỈ đổi primary của resource cũ (không upload file mới),
+        // nếu không primary mới sẽ không được áp dụng.
+        if((videos != null && !videos.isEmpty()) || chosenPrimaryVideoId != null) {
             resourceService.handleResourceUpdate(lessonId, ResourceType.VIDEO, ObjectType.LESSON, videos, chosenPrimaryVideoId);
         }
-        if(thumbnails!=null && !thumbnails.isEmpty()) {
+        if((thumbnails != null && !thumbnails.isEmpty()) || chosenPrimaryThumbnailId != null) {
             resourceService.handleResourceUpdate(lessonId, ResourceType.THUMBNAIL, ObjectType.LESSON, thumbnails, chosenPrimaryThumbnailId);
         }
         if (documents != null && !documents.isEmpty()) {
