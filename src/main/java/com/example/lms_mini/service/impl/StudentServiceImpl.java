@@ -143,7 +143,7 @@ public class StudentServiceImpl implements StudentService {
 
     @Transactional(rollbackFor = Throwable.class)
     @Override
-    public StudentBasicResponseDTO updateStudent(Long id, StudentUpdateDTO studentRequestDTO, MultipartFile avatarImage) {
+    public StudentBasicResponseDTO updateStudent(Long id, StudentUpdateDTO studentRequestDTO, MultipartFile avatarImage, boolean removeAvatar) {
 
         // Kiểm tra tồn tại học viên
         Student existingStudent = studentRepository.findById(id)
@@ -187,6 +187,15 @@ public class StudentServiceImpl implements StudentService {
 
             // Store new avatar
             updatedAvatarUrl = saveStudentAvatar(avatarImage, existingStudent.getId());
+
+        } else if (removeAvatar) {
+            // Người dùng xóa avatar và không chọn ảnh mới -> xóa mềm avatar cũ
+            if(existingAvatar != null) {
+                existingAvatar.setIsPrimary(false);
+                existingAvatar.setStatus(Status.DELETE);
+                resourceRepository.save(existingAvatar);
+            }
+            updatedAvatarUrl = null;
 
         } else {
             if(existingAvatar != null) {

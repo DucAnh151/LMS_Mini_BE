@@ -120,11 +120,12 @@ public class StudentController {
     public DataResponse<?> updateStudent(@Min(value = 1) @PathVariable Long studentId,
                                          @Valid @ModelAttribute StudentUpdateDTO dto,
                                          @RequestParam(value = "avatarImage", required = false) MultipartFile avatarImage,
+                                         @RequestParam(value = "removeAvatar", required = false, defaultValue = "false") boolean removeAvatar,
                                          Locale locale) {
         return DataResponse.builder()
                 .status(200)
                 .message(messageSource.getMessage("student.update.success", null, locale))
-                .data(studentService.updateStudent(studentId, dto, avatarImage))
+                .data(studentService.updateStudent(studentId, dto, avatarImage, removeAvatar))
                 .build();
     }
 

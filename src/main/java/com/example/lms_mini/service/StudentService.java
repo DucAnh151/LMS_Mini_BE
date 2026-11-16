@@ -25,7 +25,7 @@ public interface StudentService {
 
     StudentBasicResponseDTO createStudent(StudentRequestDTO studentRequestDTO, MultipartFile avatarImage);
 
-    StudentBasicResponseDTO updateStudent(Long id, StudentUpdateDTO dto, MultipartFile avatarImage);
+    StudentBasicResponseDTO updateStudent(Long id, StudentUpdateDTO dto, MultipartFile avatarImage, boolean removeAvatar);
 
     void softDelete(Long studentId);
 
